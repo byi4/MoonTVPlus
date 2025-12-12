@@ -63,6 +63,14 @@ export interface AdminConfig {
     channelNumber?: number;
     disabled?: boolean;
   }[];
+  ThemeConfig?: {
+    enableBuiltInTheme: boolean; // 是否启用内置主题
+    builtInTheme: string; // 内置主题名称
+    customCSS: string; // 自定义CSS
+    enableCache: boolean; // 是否启用浏览器缓存
+    cacheMinutes: number; // 缓存时间（分钟）
+    cacheVersion: number; // CSS版本号（用于缓存控制）
+  };
 }
 
 export interface AdminConfigResult {

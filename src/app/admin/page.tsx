@@ -32,6 +32,7 @@ import {
   ExternalLink,
   FileText,
   FolderOpen,
+  Palette,
   Settings,
   Tv,
   Users,
@@ -4235,6 +4236,322 @@ const ConfigFileComponent = ({
   );
 };
 
+// 主题配置组件
+const ThemeConfigComponent = ({
+  config,
+  refreshConfig,
+}: {
+  config: AdminConfig | null;
+  refreshConfig: () => Promise<void>;
+}) => {
+  const { alertModal, showAlert, hideAlert } = useAlertModal();
+  const { isLoading, withLoading } = useLoadingState();
+  const [themeSettings, setThemeSettings] = useState({
+    enableBuiltInTheme: false,
+    builtInTheme: 'default',
+    customCSS: '',
+    enableCache: true,
+    cacheMinutes: 1440, // 默认1天（1440分钟）
+  });
+
+  useEffect(() => {
+    if (config?.ThemeConfig) {
+      setThemeSettings({
+        enableBuiltInTheme: config.ThemeConfig.enableBuiltInTheme || false,
+        builtInTheme: config.ThemeConfig.builtInTheme || 'default',
+        customCSS: config.ThemeConfig.customCSS || '',
+        enableCache: config.ThemeConfig.enableCache !== false,
+        cacheMinutes: config.ThemeConfig.cacheMinutes || 1440,
+      });
+    }
+  }, [config]);
+
+  const handleSave = async () => {
+    await withLoading('saveThemeConfig', async () => {
+      try {
+        const response = await fetch('/api/admin/theme', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(themeSettings),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || '保存失败');
+        }
+
+        showAlert({
+          type: 'success',
+          title: '保存成功',
+          message: '主题配置已更新',
+          timer: 2000,
+        });
+
+        await refreshConfig();
+
+        // 刷新页面以应用新主题
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } catch (error) {
+        showAlert({
+          type: 'error',
+          title: '保存失败',
+          message: (error as Error).message,
+        });
+      }
+    });
+  };
+
+  const builtInThemes = [
+    {
+      value: 'default',
+      label: '默认主题',
+      color: '#3b82f6',
+    },
+    {
+      value: 'dark_blue',
+      label: '深蓝夜空',
+      color: '#3b82f6',
+    },
+    {
+      value: 'purple_dream',
+      label: '紫色梦境',
+      color: '#a78bfa',
+    },
+    {
+      value: 'green_forest',
+      label: '翠绿森林',
+      color: '#10b981',
+    },
+    {
+      value: 'orange_sunset',
+      label: '橙色日落',
+      color: '#f97316',
+    },
+    {
+      value: 'pink_candy',
+      label: '粉色糖果',
+      color: '#ec4899',
+    },
+    {
+      value: 'cyan_ocean',
+      label: '青色海洋',
+      color: '#06b6d4',
+    },
+  ];
+
+  return (
+    <div className='space-y-6'>
+      {/* 主题类型选择 */}
+      <div className='bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700'>
+        <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4'>
+          主题类型
+        </h3>
+        <div className='space-y-4'>
+          <label className='flex items-center space-x-3 cursor-pointer'>
+            <input
+              type='radio'
+              checked={!themeSettings.enableBuiltInTheme}
+              onChange={() =>
+                setThemeSettings((prev) => ({
+                  ...prev,
+                  enableBuiltInTheme: false,
+                }))
+              }
+              className='w-4 h-4 text-blue-600'
+            />
+            <span className='text-gray-900 dark:text-gray-100'>
+              自定义CSS（使用下方的CSS编辑器）
+            </span>
+          </label>
+          <label className='flex items-center space-x-3 cursor-pointer'>
+            <input
+              type='radio'
+              checked={themeSettings.enableBuiltInTheme}
+              onChange={() =>
+                setThemeSettings((prev) => ({
+                  ...prev,
+                  enableBuiltInTheme: true,
+                }))
+              }
+              className='w-4 h-4 text-blue-600'
+            />
+            <span className='text-gray-900 dark:text-gray-100'>
+              内置主题（使用预设的主题样式）
+            </span>
+          </label>
+        </div>
+      </div>
+
+      {/* 内置主题选择 */}
+      {themeSettings.enableBuiltInTheme && (
+        <div className='bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700'>
+          <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4'>
+            选择内置主题
+          </h3>
+          <div className='flex flex-wrap gap-3'>
+            {builtInThemes.map((theme) => (
+              <div
+                key={theme.value}
+                onClick={() =>
+                  setThemeSettings((prev) => ({
+                    ...prev,
+                    builtInTheme: theme.value,
+                  }))
+                }
+                className={`cursor-pointer rounded-lg border-2 p-3 transition-all hover:shadow-md ${
+                  themeSettings.builtInTheme === theme.value
+                    ? 'border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800 bg-blue-50 dark:bg-blue-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                <div className='flex items-center gap-3'>
+                  {/* 圆形颜色预览 */}
+                  <div
+                    className='w-10 h-10 rounded-full flex-shrink-0 shadow-sm'
+                    style={{ backgroundColor: theme.color }}
+                  />
+                  {/* 主题名称 */}
+                  <div className='flex items-center gap-2'>
+                    <span className='text-sm font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                      {theme.label}
+                    </span>
+                    {themeSettings.builtInTheme === theme.value && (
+                      <div className='w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0'>
+                        <svg
+                          className='w-2.5 h-2.5 text-white'
+                          fill='none'
+                          stroke='currentColor'
+                          viewBox='0 0 24 24'
+                        >
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            strokeWidth={3}
+                            d='M5 13l4 4L19 7'
+                          />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className='mt-4 text-sm text-gray-600 dark:text-gray-400'>
+            注意：启用内置主题时，自定义CSS将被禁用
+          </p>
+        </div>
+      )}
+
+      {/* 自定义CSS编辑器 */}
+      {!themeSettings.enableBuiltInTheme && (
+        <div className='bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700'>
+          <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4'>
+            自定义CSS
+          </h3>
+          <textarea
+            value={themeSettings.customCSS}
+            onChange={(e) =>
+              setThemeSettings((prev) => ({
+                ...prev,
+                customCSS: e.target.value,
+              }))
+            }
+            placeholder='在此输入自定义CSS代码...'
+            className='w-full h-96 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+          />
+          <p className='mt-2 text-sm text-gray-600 dark:text-gray-400'>
+            提示：可以使用CSS变量、媒体查询等高级特性
+          </p>
+        </div>
+      )}
+
+      {/* 缓存设置 */}
+      <div className='bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700'>
+        <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4'>
+          缓存设置
+        </h3>
+        <div className='space-y-4'>
+          <label className='flex items-center space-x-3 cursor-pointer'>
+            <input
+              type='checkbox'
+              checked={themeSettings.enableCache}
+              onChange={(e) =>
+                setThemeSettings((prev) => ({
+                  ...prev,
+                  enableCache: e.target.checked,
+                }))
+              }
+              className='w-4 h-4 text-blue-600 rounded'
+            />
+            <span className='text-gray-900 dark:text-gray-100'>
+              启用浏览器缓存（推荐）
+            </span>
+          </label>
+
+          {themeSettings.enableCache && (
+            <div>
+              <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+                缓存时间（分钟）
+              </label>
+              <input
+                type='number'
+                min='1'
+                max='43200'
+                value={themeSettings.cacheMinutes}
+                onChange={(e) =>
+                  setThemeSettings((prev) => ({
+                    ...prev,
+                    cacheMinutes: parseInt(e.target.value) || 1440,
+                  }))
+                }
+                className='w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+              />
+              <p className='mt-2 text-sm text-gray-600 dark:text-gray-400'>
+                建议值：60分钟（1小时）、1440分钟（1天）、10080分钟（7天）
+              </p>
+            </div>
+          )}
+        </div>
+        <p className='mt-4 text-sm text-gray-600 dark:text-gray-400'>
+          启用后，用户浏览器会缓存CSS文件指定时间，减少服务器负载。修改主题后会自动更新缓存。
+        </p>
+      </div>
+
+      {/* 保存按钮 */}
+      <div className='flex justify-end'>
+        <button
+          onClick={handleSave}
+          disabled={isLoading('saveThemeConfig')}
+          className={
+            isLoading('saveThemeConfig')
+              ? buttonStyles.disabled
+              : buttonStyles.success
+          }
+        >
+          {isLoading('saveThemeConfig') ? '保存中...' : '保存主题配置'}
+        </button>
+      </div>
+
+      {/* 弹窗 */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={hideAlert}
+        type={alertModal.type}
+        title={alertModal.title}
+        message={alertModal.message}
+        timer={alertModal.timer}
+        showConfirm={alertModal.showConfirm}
+      />
+    </div>
+  );
+};
+
 // 新增站点配置组件
 const SiteConfigComponent = ({
   config,
@@ -5869,6 +6186,7 @@ function AdminPageClient() {
     configFile: false,
     dataMigration: false,
     customAdFilter: false,
+    themeConfig: false,
   });
 
   // 获取管理员配置
@@ -6014,6 +6332,21 @@ function AdminPageClient() {
             onToggle={() => toggleTab('siteConfig')}
           >
             <SiteConfigComponent config={config} refreshConfig={fetchConfig} />
+          </CollapsibleTab>
+
+          {/* 主题配置标签 */}
+          <CollapsibleTab
+            title='主题配置'
+            icon={
+              <Palette
+                size={20}
+                className='text-gray-600 dark:text-gray-400'
+              />
+            }
+            isExpanded={expandedTabs.themeConfig}
+            onToggle={() => toggleTab('themeConfig')}
+          >
+            <ThemeConfigComponent config={config} refreshConfig={fetchConfig} />
           </CollapsibleTab>
 
           <div className='space-y-4'>
